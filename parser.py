@@ -1,26 +1,46 @@
 import sys
 
+
+class drone():
+    def waiting_his_turn(self) -> None:
+        pass
+
+    def go_on_next(self) -> None:
+        pass
+
+    def get_back_on_previous(self) -> None:
+        pass
+
+
 class hub ():
-    def __init__(self, name: str, coord_x: int, coord_y: int, color: str, max_drone: int = 1) -> None:
+    def __init__(self, name: str, coord_x: int, coord_y: int, color: str,
+                 max_drone: int = 1) -> None:
         self.name: str = name
-        self.x: int= coord_x
+        self.x: int = coord_x
         self.y: int = coord_y
         self.color: str = color
         self.max_drone: int = max_drone
-    
+
 
 class starting_hub(hub):
-    def __init__(self, name: str, coord_x: int, coord_y: int, color: str):
-        super().__init__(self, name, coord_x, coord_y, color)
+    def __init__(self, name: str, coord_x: int, coord_y: int, color: str,
+                 max_drone: int = 1):
+        super().__init__(name, coord_x, coord_y, color, max_drone)
         self.is_starting: bool = True
-    
-    def verif_starting_is_correct(map_info) -> Bool:
-        if 
+
+    def verif_starting_is_correct(self, map: map_info) -> bool:
+        if self.max_drone < map.drone_numbers:
+            return False
+        else:
+            return True
 
 
 class ending_hub(hub):
+    pass
+
 
 class connection():
+    pass
 
 
 class map_info():
@@ -34,6 +54,6 @@ class map_info():
 def parser_monitor():
     filename = sys.argv[1]
     with open(filename) as f:
-        data = f.read()
+        data = f.read()()
 
     print(data)
