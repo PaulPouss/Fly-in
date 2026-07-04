@@ -7,6 +7,7 @@ class hub ():
         self.y: int = coord_y
         self.color: str = color
         self.max_drone: int = max_drone
+    
 
 class starting_hub(hub):
     def __init__(self, name: str, coord_x: int, coord_y: int, color: str):
