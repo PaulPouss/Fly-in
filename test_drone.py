@@ -24,14 +24,15 @@ class DataProcessor(ABC):
 
 class HubProcessor(DataProcessor):
     def validate(self, data: str) -> bool:
-        if not data.startswith(("hub:", "start_hub:", "end_hub:")):
+        kind, value = data.split(":", 1)
+        if kind not in ("hub:", "start_hub:", "end_hub:"):
             return False
-        parts = data.split()
+        parts = value.split()
         
         if len(parts) < 3:
             return False
         
-        if not parts[2].isdigit() or not parts[3].isdigit():
+        if not parts[1].isdigit() or not parts[2].isdigit():
             return False
         
         return True
@@ -40,4 +41,4 @@ class HubProcessor(DataProcessor):
         if not self.validate(data):
             return
         
-        self.data.
+        self.data.append(data)
