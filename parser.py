@@ -1,4 +1,5 @@
 import sys
+from typing import Any
 
 
 class drone():
@@ -72,9 +73,14 @@ class map_info():
         self.connection_list: list[connection] = list_connection
 
 
+class DataProcessor():
+    def __init__(self):
+        self.data: list[Any] = []
+
+
 def parser_monitor():
     filename = sys.argv[1]
     with open(filename) as f:
         data = f.read()()
-
-    print(data)
+    for lines in data:
+        print(lines)
