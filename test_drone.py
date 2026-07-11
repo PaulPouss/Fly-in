@@ -113,6 +113,12 @@ class ConnectionProcessor(DataProcessor):
         self.data.append(data)
 
 
+def create_map(processored: Streamprocessor) -> None:
+
+
+
+
+
 def main() -> None:
     filename = sys.argv[1]
     parser = StreamProcessor()
@@ -134,6 +140,7 @@ def main() -> None:
                 errors_parser.add_error(line_number, str(e))
 
     if not errors_parser.errors:
+        create_map(parser)
         for processor in parser.processors:
             print(processor.data)
     else:
