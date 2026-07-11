@@ -3,20 +3,27 @@ from typing import Any
 import sys
 
 
+class ParserError(Exception):
+    def __init__(self) -> None:
+        super().__init__()
+        self.errors: dict[int, list[str]] = {}
+
+    def add_error(self, line: int, error: str) -> None:
+        self.errors.setdefault(line, []).append(error)
+
+
+class ValidationError(Exception):
+    def __init__(self, message: str):
+        super().__init__(message)
+
+
 class DataProcessor(ABC):
     def __init__(self):
         self.data: list[Any] = []
         self.index = 0
 
-    def output(self) -> tuple[int, str]:
-        if self.index < len(self.data):
-            self.index += 1
-            return (self.index - 1, self.data[self.index - 1])
-        else:
-            raise IndexError
-
     @abstractmethod
-    def validate(self, data: Any) -> bool:
+    def validate(self, data: Any) -> None:
         pass
 
     @abstractmethod
@@ -40,65 +47,72 @@ class StreamProcessor():
 
 
 class HubProcessor(DataProcessor):
-    def validate(self, data: str) -> bool:
+    def validate(self, data: str) -> None:
         try:
             kind, value = data.split(":", 1)
             if kind not in ("hub", "start_hub", "end_hub"):
-                return False
+                return
             parts = value.split()
 
             if len(parts) < 3:
-                return False
+                raise ValidationError("need at least 3 parts")
 
-            if not parts[1].isdigit() or not parts[2].isdigit():
-                return False
+            for i in range(1, 3):
+                try:
+                    int(parts[i])
+                except ValueError:
+                    raise ValidationError("coordonates must be int")
 
         except ValueError:
-            return False
-        return True
+            raise ValidationError("Line format is invalid")
 
     def ingest(self, data: Any) -> None:
-        if not self.validate(data):
-            return
-
+        self.validate(data)
         self.data.append(data)
 
 
 class ConnectionProcessor(DataProcessor):
-    def validate(self, data: str) -> bool:
+    def validate(self, data: str) -> None:
         try:
             kind, value = data.split(":", 1)
             if kind != "connection":
-                return False
+                return
             parts = value.split()
 
             if len(parts) < 1:
-                return False
+                raise ValidationError("no parameters to this connection")
 
         except ValueError:
-            return False
-        return True
+            raise ValidationError("Line format is invalid")
 
     def ingest(self, data: Any) -> None:
-        if not self.validate(data):
-            return
-
+        self.validate(data)
         self.data.append(data)
 
 
 def main() -> None:
     filename = sys.argv[1]
     parser = StreamProcessor()
-    processor = HubProcessor()
+    processor_hub = HubProcessor()
     connection = ConnectionProcessor()
-    parser.add_processor(processor)
+    errors_parser = ParserError()
+    parser.add_processor(processor_hub)
     parser.add_processor(connection)
     with open(filename) as f:
         data = f.read().splitlines()
-        for lines in data:
-            parser.ingest_stream(lines)
-    for processors in parser.processors:
-        print(processors.data)
+        for line_number, line in enumerate(data, start=1):
+            if not line.strip():
+                continue
+            try:
+                parser.ingest_stream(line)
+            except ValidationError as e:
+                errors_parser.add_error(line_number, str(e))
+
+    if not errors_parser.errors:
+        for processor in parser.processors:
+            print(processor.data)
+    else:
+        print(errors_parser.errors)
 
 
 if __name__ == "__main__":
