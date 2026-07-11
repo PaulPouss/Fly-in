@@ -31,6 +31,24 @@ class DataProcessor(ABC):
         pass
 
 
+def check_metadata(data: str) -> bool:
+    list_key: list[str] = ["zone", "color", "max_drones"]
+    list_zones: list[str] = ["priority", "blocked", "normal", "restricted"]
+    key, value = data.split("=", 1)
+    if key not in list_key:
+        return False
+    if key == "zone":
+        if value not in list_zones:
+            return False
+    elif key == "color":
+        if not value.isalpha():
+            return False
+    elif key == "max_drones":
+        if not value.isdigit() or not int(value) > 0:
+            return False
+    return True
+
+
 class StreamProcessor():
     def __init__(self):
         self.processors: list[DataProcessor] = []
@@ -62,6 +80,11 @@ class HubProcessor(DataProcessor):
                     int(parts[i])
                 except ValueError:
                     raise ValidationError("coordonates must be int")
+
+            for i in range(3, len(parts)):
+                if not check_metadata(parts[i].strip("[]")):
+                    raise ValidationError(f"Metadata in place {i}"
+                                          " is incorrect")
 
         except ValueError:
             raise ValidationError("Line format is invalid")
