@@ -124,6 +124,8 @@ def main() -> None:
     with open(filename) as f:
         data = f.read().splitlines()
         for line_number, line in enumerate(data, start=1):
+            if line.startswith("#"):
+                continue
             if not line.strip():
                 continue
             try:
