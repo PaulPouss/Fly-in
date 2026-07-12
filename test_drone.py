@@ -126,6 +126,22 @@ class ConnectionProcessor(DataProcessor):
         self.data.append(data)
 
 
+class InfoProcessor(DataProcessor):
+    def validate(self, data: str) -> None:
+        try:
+            key, value = data.split(":", 1)
+            if key != "nb_drones":
+                return
+            if not value.isdigit() or not int(value) > 0:
+                raise ValidationError("Drone number must be a positive int")
+        except ValueError:
+            raise ValidationError("Line format is invalid")
+
+    def ingest(self, data: str) -> None:
+        self.validate(data)
+        self.data.append(data)
+
+
 def create_map(processored: StreamProcessor) -> None:
     pass
 
