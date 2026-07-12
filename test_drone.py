@@ -130,6 +130,7 @@ class InfoProcessor(DataProcessor):
     def validate(self, data: str) -> None:
         try:
             key, value = data.split(":", 1)
+            value = value.strip()
             if key != "nb_drones":
                 return
             if not value.isdigit() or not int(value) > 0:
@@ -150,10 +151,12 @@ def main() -> None:
     filename = sys.argv[1]
     parser = StreamProcessor()
     processor_hub = HubProcessor()
+    info_process = InfoProcessor()
     connection = ConnectionProcessor()
     errors_parser = ParserError()
     parser.add_processor(processor_hub)
     parser.add_processor(connection)
+    parser.add_processor(info_process)
     with open(filename) as f:
         data = f.read().splitlines()
         for line_number, line in enumerate(data, start=1):

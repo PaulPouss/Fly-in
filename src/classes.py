@@ -7,8 +7,9 @@ class drone():
         self.status: str = "waiting"
         self.id: int = drone_id
         self.current_hub: Hub = None
-        self.path = []
+        self.path: list[Any] = []
         self.path_index = 0
+
     def waiting_his_turn(self) -> None:
         pass
 
