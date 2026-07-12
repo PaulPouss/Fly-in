@@ -49,6 +49,15 @@ def check_metadata(data: str) -> bool:
     return True
 
 
+def check_metadata_connection(data: str) -> bool:
+    key, value = data.split("=", 1)
+    if key != "max_link_capacity":
+        return False
+    if not value.isdigit() or not int(value) > 0:
+        return False
+    return True
+
+
 class StreamProcessor():
     def __init__(self):
         self.processors: list[DataProcessor] = []
@@ -105,6 +114,10 @@ class ConnectionProcessor(DataProcessor):
             if len(parts) < 1:
                 raise ValidationError("no parameters to this connection")
 
+            if len(parts) == 2:
+                if not check_metadata_connection(parts[1].strip("[]")):
+                    raise ValidationError("Metadata is incorrect")
+
         except ValueError:
             raise ValidationError("Line format is invalid")
 
@@ -113,10 +126,8 @@ class ConnectionProcessor(DataProcessor):
         self.data.append(data)
 
 
-def create_map(processored: Streamprocessor) -> None:
-
-
-
+def create_map(processored: StreamProcessor) -> None:
+    pass
 
 
 def main() -> None:
