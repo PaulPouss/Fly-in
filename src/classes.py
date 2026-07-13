@@ -1,4 +1,3 @@
-import sys
 from typing import Any
 from enum import Enum
 
@@ -39,35 +38,44 @@ class Hub ():
         self.max_drone: int = max_drone
         self.role: HubRole = role
         self.drones_on_hub: int = 0
+        if self.role != HubRole.NORMAL:
+            self.max_drone = 1000000
+
+    def movement_cost(self) -> int | None:
+        pass
 
 
 class NormalHub(Hub):
     def __init__(self, name: str, coord_x: int, coord_y: int, color: str,
-                 line_number: int, max_drone: int = 1) -> None:
+                 line_number: int, max_drone: int = 1,
+                 role: HubRole = HubRole.NORMAL) -> None:
         super().__init__(name, coord_x, coord_y, color,
-                         line_number, max_drone)
+                         line_number, max_drone, role)
 
 
 class BlockedHub(Hub):
     def __init__(self, name: str, coord_x: int, coord_y: int, color: str,
-                 line_number: int, max_drone: int = 1):
+                 line_number: int, max_drone: int = 1,
+                 role: HubRole = HubRole.NORMAL):
         super().__init__(name, coord_x, coord_y, color,
-                         line_number, max_drone)
+                         line_number, max_drone, role)
         self.blocked: str = "BLOCKED"
 
 
 class RestrictedHub(Hub):
     def __init__(self, name: str, coord_x: int, coord_y: int, color: str,
-                 line_number: int, max_drone: int = 1):
+                 line_number: int, max_drone: int = 1,
+                 role: HubRole = HubRole.NORMAL):
         super().__init__(name, coord_x, coord_y, color,
-                         line_number, max_drone)
+                         line_number, max_drone, role)
 
 
-class PriotityHub(Hub):
+class PriorityHub(Hub):
     def __init__(self, name: str, coord_x: int, coord_y: int, color: str,
-                 line_number: int, max_drone: int = 1):
+                 line_number: int, max_drone: int = 1,
+                 role: HubRole = HubRole.NORMAL):
         super().__init__(name, coord_x, coord_y, color,
-                         line_number, max_drone)
+                         line_number, max_drone, role)
 
 
 class Connection():
