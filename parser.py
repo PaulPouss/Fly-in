@@ -18,16 +18,16 @@ class ValidationError(Exception):
 
 
 class DataProcessor(ABC):
-    def __init__(self):
+    def __init__(self) -> None:
         self.data: list[Any] = []
-        self.index = 0
+        self.index: int = 0
 
     @abstractmethod
     def validate(self, data: Any) -> None:
         pass
 
     @abstractmethod
-    def ingest(self, data: Any) -> None:
+    def ingest(self, line_number: int, data: Any) -> None:
         pass
 
 
@@ -46,25 +46,25 @@ def check_metadata(data: str) -> bool:
     elif key == "max_drones":
         if not value.isdigit() or not int(value) > 0:
             return False
-    if key == "max_link_capacity":
+    elif key == "max_link_capacity":
         if not value.isdigit() or not int(value) > 0:
             return False
     return True
 
 
-class StreamProcessor():
+class StreamProcessor:
     def __init__(self):
         self.processors: list[DataProcessor] = []
 
     def add_processor(self, processor: DataProcessor) -> None:
-        for current_processors in self.processors:
-            if type(current_processors) is type(processor):
+        for current_processor in self.processors:
+            if type(current_processor) is type(processor):
                 return
         self.processors.append(processor)
 
-    def ingest_stream(self, data: Any) -> None:
-        for processors in self.processors:
-            processors.ingest(data)
+    def ingest_stream(self, line_number: int, data: Any) -> None:
+        for processor in self.processors:
+            processor.ingest(line_number, data)
 
 
 class HubProcessor(DataProcessor):
@@ -92,9 +92,9 @@ class HubProcessor(DataProcessor):
         except ValueError:
             raise ValidationError("Line format is invalid")
 
-    def ingest(self, data: Any) -> None:
+    def ingest(self, line_number: int, data: str) -> None:
         self.validate(data)
-        self.data.append(data)
+        self.data.append((line_number, data))
 
 
 class ConnectionProcessor(DataProcessor):
@@ -115,9 +115,9 @@ class ConnectionProcessor(DataProcessor):
         except ValueError:
             raise ValidationError("Line format is invalid")
 
-    def ingest(self, data: Any) -> None:
+    def ingest(self, line_number: int, data: str) -> None:
         self.validate(data)
-        self.data.append(data)
+        self.data.append((line_number, data))
 
 
 class InfoProcessor(DataProcessor):
@@ -132,9 +132,9 @@ class InfoProcessor(DataProcessor):
         except ValueError:
             raise ValidationError("Line format is invalid")
 
-    def ingest(self, data: str) -> None:
+    def ingest(self, line_number: int, data: str) -> None:
         self.validate(data)
-        self.data.append(data)
+        self.data.append((line_number, data))
 
 
 def create_map(processored: StreamProcessor) -> None:
@@ -159,7 +159,7 @@ def parser_monitor() -> None:
             if not line.strip():
                 continue
             try:
-                parser.ingest_stream(line)
+                parser.ingest_stream(line_number, line)
             except ValidationError as e:
                 errors_parser.add_error(line_number, str(e))
 

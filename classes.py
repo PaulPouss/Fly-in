@@ -1,6 +1,3 @@
-import sys
-
-
 class drone():
     def waiting_his_turn(self) -> None:
         pass
@@ -67,4 +64,3 @@ class map_info():
         self.drone_numbers = drone_number
         self.hub_list: list[Hub] = list_hub
         self.connection_list: list[connection] = list_connection
-
