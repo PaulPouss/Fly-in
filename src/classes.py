@@ -46,6 +46,9 @@ class Hub(ABC):
     def movement_cost(self) -> int | None:
         pass
 
+    def is_priority(self) -> bool:
+        return False
+
 
 class NormalHub(Hub):
     def __init__(self, name: str, coord_x: int, coord_y: int, color: str,
@@ -57,9 +60,6 @@ class NormalHub(Hub):
     def movement_cost(self) -> int:
         return 1
 
-    def is_priority(self) -> bool:
-        return False
-
 
 class BlockedHub(Hub):
     def __init__(self, name: str, coord_x: int, coord_y: int, color: str,
@@ -70,9 +70,6 @@ class BlockedHub(Hub):
 
     def movement_cost(self) -> None:
         return None
-    
-    def is_priority(self) -> bool:
-        return False
 
 
 class RestrictedHub(Hub):
@@ -81,12 +78,9 @@ class RestrictedHub(Hub):
                  role: HubRole = HubRole.NORMAL):
         super().__init__(name, coord_x, coord_y, color,
                          line_number, max_drone, role)
-    
+
     def movement_cost(self) -> int:
         return 2
-    
-    def is_priority(self) -> bool:
-        return False
 
 
 class PriorityHub(Hub):
