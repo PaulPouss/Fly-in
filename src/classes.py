@@ -1,5 +1,6 @@
 from typing import Any
 from enum import Enum
+from abc import ABC, abstractmethod
 
 
 class HubRole(Enum):
@@ -26,7 +27,7 @@ class Drone():
         pass
 
 
-class Hub ():
+class Hub (ABC):
     def __init__(self, name: str, coord_x: int, coord_y: int, color: str,
                  line_number: int, max_drone: int = 1,
                  role: HubRole = HubRole.NORMAL) -> None:
@@ -41,6 +42,7 @@ class Hub ():
         if self.role != HubRole.NORMAL:
             self.max_drone = 1000000
 
+    @abstractmethod
     def movement_cost(self) -> int | None:
         pass
 
@@ -51,6 +53,9 @@ class NormalHub(Hub):
                  role: HubRole = HubRole.NORMAL) -> None:
         super().__init__(name, coord_x, coord_y, color,
                          line_number, max_drone, role)
+    
+    def movement_cost(self):
+        
 
 
 class BlockedHub(Hub):
