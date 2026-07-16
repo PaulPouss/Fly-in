@@ -114,9 +114,3 @@ class MapInfo():
         self.drone_numbers = drone_number
         self.hub_list: list[Hub] = list_hub
         self.connection_list: list[Connection] = list_connection
-
-    def create_hub(self, data: str) -> Hub:
-        pass
-
-    def add_hub(self, Hub: Hub) -> None:
-        pass
