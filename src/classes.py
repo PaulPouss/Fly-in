@@ -28,14 +28,15 @@ class Drone():
 
 
 class Hub(ABC):
-    def __init__(self, name: str, coord_x: int, coord_y: int, color: str,
+    def __init__(self, name: str, coord_x: int, coord_y: int,
+                 color: str | None,
                  line_number: int, max_drone: int = 1,
                  role: HubRole = HubRole.NORMAL) -> None:
         self.name: str = name
         self.line_number = line_number
         self.x: int = coord_x
         self.y: int = coord_y
-        self.color: str = color
+        self.color: str | None = color
         self.max_drone: int = max_drone
         self.role: HubRole = role
         self.drones_on_hub: int = 0
