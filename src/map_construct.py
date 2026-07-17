@@ -59,4 +59,25 @@ class MapBuilder():
                                 max_drone=metadata_max_drone,
                                 role=role)
 
+        elif metadata_zone == "priority":
+            hub = PriorityHub(name=name,
+                              coord_x=x,
+                              coord_y=y,
+                              color=color,
+                              line_number=line_number,
+                              max_drone=metadata_max_drone,
+                              role=role)
+
+        elif metadata_zone == "blocked":
+            hub = BlockedHub(name=name,
+                             coord_x=x,
+                             coord_y=y,
+                             color=color,
+                             line_number=line_number,
+                             max_drone=metadata_max_drone,
+                             role=role)
+
+        else:
+            raise AssertionError
+
         self.hubs[name] = hub
