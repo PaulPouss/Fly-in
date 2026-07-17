@@ -40,6 +40,7 @@ class MapBuilder():
                 metadata_zone = value_meta
 
         # Construction de l'objet
+        hub: Hub
         if metadata_zone == "normal":
             hub = NormalHub(name=name,
                             coord_x=x,
@@ -47,7 +48,8 @@ class MapBuilder():
                             color=color,
                             line_number=line_number,
                             max_drone=metadata_max_drone,
-                            role=role,)
+                            role=role)
+
         elif metadata_zone == "restricted":
             hub = RestrictedHub(name=name,
                                 coord_x=x,
@@ -55,6 +57,6 @@ class MapBuilder():
                                 color=color,
                                 line_number=line_number,
                                 max_drone=metadata_max_drone,
-                                role=role,)
+                                role=role)
 
         self.hubs[name] = hub

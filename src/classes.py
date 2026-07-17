@@ -52,7 +52,8 @@ class Hub(ABC):
 
 
 class NormalHub(Hub):
-    def __init__(self, name: str, coord_x: int, coord_y: int, color: str,
+    def __init__(self, name: str, coord_x: int, coord_y: int,
+                 color: str | None,
                  line_number: int, max_drone: int = 1,
                  role: HubRole = HubRole.NORMAL) -> None:
         super().__init__(name, coord_x, coord_y, color,
@@ -63,7 +64,8 @@ class NormalHub(Hub):
 
 
 class BlockedHub(Hub):
-    def __init__(self, name: str, coord_x: int, coord_y: int, color: str,
+    def __init__(self, name: str, coord_x: int, coord_y: int,
+                 color: str | None,
                  line_number: int, max_drone: int = 1,
                  role: HubRole = HubRole.NORMAL):
         super().__init__(name, coord_x, coord_y, color,
@@ -74,7 +76,8 @@ class BlockedHub(Hub):
 
 
 class RestrictedHub(Hub):
-    def __init__(self, name: str, coord_x: int, coord_y: int, color: str,
+    def __init__(self, name: str, coord_x: int, coord_y: int,
+                 color: str | None,
                  line_number: int, max_drone: int = 1,
                  role: HubRole = HubRole.NORMAL):
         super().__init__(name, coord_x, coord_y, color,
@@ -85,7 +88,8 @@ class RestrictedHub(Hub):
 
 
 class PriorityHub(Hub):
-    def __init__(self, name: str, coord_x: int, coord_y: int, color: str,
+    def __init__(self, name: str, coord_x: int, coord_y: int,
+                 color: str | None,
                  line_number: int, max_drone: int = 1,
                  role: HubRole = HubRole.NORMAL):
         super().__init__(name, coord_x, coord_y, color,
