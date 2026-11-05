@@ -8,7 +8,7 @@ from .errors import SimulationError
 # TODO (not decided with the user): threshold of consecutive stuck turns
 # before triggering a targeted replanning for a drone. Value chosen
 # arbitrarily, never precisely discussed.
-STUCK_TURNS_THRESHOLD = 3
+STUCK_TURNS_THRESHOLD = 2
 
 
 class SimulationEngine():
@@ -25,6 +25,8 @@ class SimulationEngine():
         # restricted zone: hub -> destination already reserved, waiting
         # for automatic arrival next turn.
         self._in_transit: dict[Drone, tuple[Connection, Hub]] = {}
+        self._reserved_hub_slots: dict[Hub, int] = {}
+        self.turn_number = 0
 
     # ------------------------------------------------------------------
     # Construction / initialization
@@ -72,16 +74,34 @@ class SimulationEngine():
     # ------------------------------------------------------------------
     # Pathfinding
     # ------------------------------------------------------------------
+    def _path_score(self, path: list[Hub]) -> tuple[int, int]:
+        total_cost = 0
+        priority_hops = 0
+
+        for hub in path[1:]:
+            cost = hub.movement_cost()
+
+            if cost is None:
+                raise SimulationError("path contains a blocked hub")
+
+            total_cost += cost
+
+            if hub.is_priority():
+                priority_hops += 1
+
+        return total_cost, -priority_hops
 
     def _dijkstra(
         self,
         start: Hub,
         end: Hub,
         blocked_hubs: set[Hub] | None = None,
+        blocked_connections: set[frozenset[Hub]] | None = None,
     ) -> list[Hub] | None:
         """Shortest path by movement_cost(), tie-broken toward priority
         zones (more priority hops preferred at equal cost)."""
         blocked_hubs = blocked_hubs or set()
+        blocked_connections = blocked_connections or set()
         counter = count()
         # (total_cost, -priority_hops, tie_breaker, hub)
         frontier: list[tuple[int, int, int, Hub]] = [
@@ -101,9 +121,14 @@ class SimulationEngine():
             for connection, neighbor in self.adjacency[current]:
                 if neighbor in blocked_hubs:
                     continue
+
+                if frozenset((current, neighbor)) in blocked_connections:
+                    continue
+
                 step_cost = neighbor.movement_cost()
                 if step_cost is None:
                     continue  # blocked zone, impassable
+
                 new_cost = cost + step_cost
                 new_neg_priority = neg_priority - (
                     1 if neighbor.is_priority() else 0
@@ -144,30 +169,88 @@ class SimulationEngine():
         return max(bottleneck, 1)
 
     def _compute_distributed_paths(self) -> list[tuple[list[Hub], int]]:
-        """Compute several distinct start->end paths by penalizing
-        (temporarily blocking) hubs already used by a previous path, to
-        favor route diversity.
+        """Find up to K distinct shortest paths using Yen's algorithm."""
 
-        TODO (heuristic not validated in detail): simple greedy
-        approach, not guaranteed optimal; the max number of paths
-        searched is arbitrary.
-        """
         max_paths = 4
-        paths: list[tuple[list[Hub], int]] = []
-        blocked: set[Hub] = set()
 
-        for _ in range(max_paths):
-            path = self._dijkstra(self.start, self.end, blocked_hubs=blocked)
-            if path is None:
+        first_path = self._dijkstra(self.start, self.end)
+
+        if first_path is None:
+            return []
+
+        accepted_paths: list[list[Hub]] = [first_path]
+
+        # Candidate paths ordered by their Dijkstra score.
+        candidates: list[tuple[int, int, int, tuple[Hub, ...]]] = []
+        candidate_set: set[tuple[Hub, ...]] = set()
+
+        counter = count()
+
+        for _ in range(max_paths - 1):
+            previous_path = accepted_paths[-1]
+
+            for i in range(len(previous_path) - 1):
+                root_path = previous_path[:i + 1]
+                spur_hub = root_path[-1]
+
+                blocked_hubs = set(root_path[:-1])
+                blocked_connections: set[frozenset[Hub]] = set()
+
+                # Remove edges that would reproduce an already
+                # accepted path sharing the same root.
+                for path in accepted_paths:
+                    if (
+                        len(path) > i + 1
+                        and path[:i + 1] == root_path
+                    ):
+                        blocked_connections.add(
+                            frozenset((path[i], path[i + 1]))
+                        )
+
+                spur_path = self._dijkstra(
+                    spur_hub,
+                    self.end,
+                    blocked_hubs=blocked_hubs,
+                    blocked_connections=blocked_connections,
+                )
+
+                if spur_path is None:
+                    continue
+
+                total_path = root_path[:-1] + spur_path
+                candidate = tuple(total_path)
+
+                if (
+                    candidate in candidate_set
+                    or total_path in accepted_paths
+                ):
+                    continue
+
+                cost, neg_priority = self._path_score(total_path)
+
+                heapq.heappush(
+                    candidates,
+                    (
+                        cost,
+                        neg_priority,
+                        next(counter),
+                        candidate,
+                    ),
+                )
+
+                candidate_set.add(candidate)
+
+            if not candidates:
                 break
-            bottleneck = self._path_bottleneck(path)
-            paths.append((path, bottleneck))
-            # Penalize the intermediate hubs of this path for the next
-            # search, to force a different route.
-            blocked.update(path[1:-1])
 
-        return paths
+            _, _, _, best_candidate = heapq.heappop(candidates)
 
+            accepted_paths.append(list(best_candidate))
+
+        return [
+            (path, self._path_bottleneck(path))
+            for path in accepted_paths
+        ]
     # ------------------------------------------------------------------
     # Main loop
     # ------------------------------------------------------------------
@@ -176,18 +259,15 @@ class SimulationEngine():
         self,
         on_turn: "Callable[[SimulationEngine, int], None] | None" = None,
     ) -> list[list[str]]:
-        active = [d for d in self.drones if d.status != "finished"]
-        turn_number = 0
-        while active:
-            turn_number += 1
-            moved_this_turn = self._run_one_turn(active)
-            if not moved_this_turn:
-                raise SimulationError(
-                    "deadlock detected: no drone could move this turn"
-                )
+        while True:
+            turn_moves = self.step()
+
+            if turn_moves is None:
+                break
+
             if on_turn is not None:
-                on_turn(self, turn_number)
-            active = [d for d in self.drones if d.status != "finished"]
+                on_turn(self, self.turn_number)
+
         return self.turns_log
 
     def _run_one_turn(self, active: list[Drone]) -> bool:
@@ -197,11 +277,28 @@ class SimulationEngine():
         # 1. Drones already in forced transit arrive automatically.
         for drone in list(self._in_transit.keys()):
             connection, destination = self._in_transit.pop(drone)
+
+            # Release the reserved slot.
+            reserved = self._reserved_hub_slots.get(destination, 0)
+
+            if reserved <= 0:
+                raise SimulationError(
+                    f"missing hub reservation for {destination.name}"
+                )
+
+            if reserved == 1:
+                del self._reserved_hub_slots[destination]
+            else:
+                self._reserved_hub_slots[destination] -= 1
+
+            # Convert reservation into physical occupancy.
             drone.go_on_next()
             destination.drones_on_hub += 1
+
             connection.current_occupation = max(
                 0, connection.current_occupation - 1
             )
+
             turn_moves.append(f"D{drone.id}-{destination.name}")
             any_move = True
 
@@ -258,7 +355,11 @@ class SimulationEngine():
                 connection = self._connection_between(
                     drone.current_hub, hub
                 )
-                available = hub.max_drone - hub.drones_on_hub
+                available = (
+                                hub.max_drone
+                                - hub.drones_on_hub
+                                - self._reserved_hub_slots.get(hub, 0)
+                            )
                 if (available > 0
                         and connection.current_occupation
                         < connection.max_link_capacity):
@@ -285,25 +386,40 @@ class SimulationEngine():
                 connection = self._connection_between(
                     drone.current_hub, hub
                 )
-                available = hub.max_drone - hub.drones_on_hub
+                available = (
+                            hub.max_drone
+                            - hub.drones_on_hub
+                            - self._reserved_hub_slots.get(hub, 0)
+                        )
                 if (available > 0
                         and connection.current_occupation
                         < connection.max_link_capacity):
+
                     connection.current_occupation += 1
+
                     old_hub = drone.current_hub
+
                     if old_hub is not None:
                         old_hub.drones_on_hub = max(
                             0, old_hub.drones_on_hub - 1
                         )
+
+                    # Reserve a slot in the destination hub.
+                    self._reserved_hub_slots[hub] = (
+                        self._reserved_hub_slots.get(hub, 0) + 1
+                    )
+
                     self._in_transit[drone] = (connection, hub)
+
                     drone.status = "moving"
                     drone.stuck_turns = 0
+
                     turn_moves.append(f"D{drone.id}-{connection.name}")
                     any_move = True
+
                 else:
                     drone.waiting_his_turn()
                     self._maybe_replan(drone)
-
         self.turns_log.append(turn_moves)
         return any_move
 
@@ -350,3 +466,24 @@ class SimulationEngine():
         drone.path = new_path
         drone.path_index = 0
         drone.stuck_turns = 0
+
+    def step(self) -> list[str] | None:
+        """Execute exactly one simulation turn.
+
+        Returns the moves made during this turn, or None if finished.
+        """
+        active = [d for d in self.drones if d.status != "finished"]
+
+        if not active:
+            return None
+
+        self.turn_number += 1
+
+        moved = self._run_one_turn(active)
+
+        if not moved:
+            raise SimulationError(
+                "deadlock detected: no drone could move this turn"
+            )
+
+        return self.turns_log[-1]

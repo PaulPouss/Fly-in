@@ -103,23 +103,47 @@ class ConnectionProcessor(DataProcessor):
     def validate(self, data: str) -> bool:
         try:
             kind, value = data.split(":", 1)
+
             if kind != "connection":
                 return False
+
             parts = value.split()
 
             if len(parts) < 1:
                 raise ValidationError("no parameters to this connection")
 
-            # TODO: does not check if len(parts) > 2 (malformed line with
-            # too many elements), nor the shape of the connection name
-            # parts[0] (must contain a dash separating two valid zone
-            # names)
+            # A connection must contain exactly one name and optionally
+            # one metadata parameter.
+            if len(parts) > 2:
+                raise ValidationError("Too many parameters for this connection")
+
+            # The connection name must contain exactly one dash separating
+            # two valid zone names.
+            connection_parts = parts[0].split("-")
+
+            if len(connection_parts) != 2 or not all(connection_parts):
+                raise ValidationError(
+                    "Connection name must contain two zone names separated by a dash"
+                )
+
+            # Optionally validate each zone name.
+            for zone in connection_parts:
+                if not zone.replace("_", "").isalnum():
+                    raise ValidationError(f"Invalid zone name: {zone}")
+
+            # Validate optional metadata.
             if len(parts) == 2:
-                if not check_metadata(parts[1].strip("[]")):
+                metadata = parts[1]
+
+                if not (metadata.startswith("[") and metadata.endswith("]")):
+                    raise ValidationError("Metadata must be enclosed in brackets")
+
+                if not check_metadata(metadata[1:-1]):
                     raise ValidationError("Metadata is incorrect")
 
         except ValueError:
             raise ValidationError("Line format is invalid")
+
         return True
 
     def ingest(self, line_number: int, data: str) -> None:
@@ -157,20 +181,25 @@ def parser_monitor() -> None:
     parser.add_processor(processor_hub)
     parser.add_processor(connection)
     parser.add_processor(info_process)
-    with open(filename) as f:
-        data = f.read().splitlines()
-        for line_number, line in enumerate(data, start=1):
-            if line.startswith("#"):
-                continue
-            if not line.strip():
-                continue
-            try:
-                parser.ingest_stream(line_number, line)
-            except ValidationError as e:
-                errors_parser.add_error(line_number, str(e))
+    try:
+        with open(filename) as f:
+            data = f.read().splitlines()
+            for line_number, line in enumerate(data, start=1):
+                if line.startswith("#"):
+                    continue
+                if not line.strip():
+                    continue
+                try:
+                    parser.ingest_stream(line_number, line)
+                except ValidationError as e:
+                    errors_parser.add_error(line_number, str(e))
 
-    if errors_parser.errors:
-        print(errors_parser.errors)
+        if errors_parser.errors:
+            print(errors_parser.errors)
+            return
+
+    except FileNotFoundError:
+        print("No such file exist")
         return
 
     builder = MapBuilder()
@@ -200,9 +229,6 @@ def parser_monitor() -> None:
     try:
         map_info = builder.build()
     except ValidationError as e:
-        # TODO: 0 is a "sentinel" line number for lack of a better
-        # option, since this error (missing or multiple start/end) is
-        # not tied to a single precise line in the file
         errors_parser.add_error(0, str(e))
         print(errors_parser.errors)
         return
