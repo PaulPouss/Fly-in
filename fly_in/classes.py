@@ -55,8 +55,6 @@ class Hub(ABC):
         self.max_drone: int = max_drone
         self.role: HubRole = role
         self.drones_on_hub: int = 0
-        # TODO: 1000000 is a sentinel value discussed but never finally
-        # settled (alternative: float('inf') or a dedicated method)
         if self.role != HubRole.NORMAL:
             self.max_drone = 1000000
 

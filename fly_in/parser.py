@@ -248,12 +248,11 @@ def parser_monitor() -> None:
 
     try:
         turns = engine.run(on_turn=render_turn)
+
     except SimulationError as e:
         print(f"Simulation error: {e}")
         return
 
-    for turn_moves in turns:
-        print(" ".join(turn_moves))
     print(f"Total turns: {len(turns)}")
     print(f"Renders saved in ./renders/ ({len(turns)} images)")
 

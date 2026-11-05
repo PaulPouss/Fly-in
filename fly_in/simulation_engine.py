@@ -264,6 +264,7 @@ class SimulationEngine():
             if on_turn is not None:
                 on_turn(self, self.turn_number)
 
+                print(" ".join(turn_moves))
         return self.turns_log
 
     def _run_one_turn(self, active: list[Drone]) -> bool:
