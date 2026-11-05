@@ -234,7 +234,13 @@ def parser_monitor() -> None:
         print(errors_parser.errors)
         return
 
-    engine = SimulationEngine(map_info)
+    try:
+        engine = SimulationEngine(map_info)
+
+    except SimulationError as e:
+        print(f"Simulation error: {e}")
+        return
+
     renderer = RenderMap(map_info)
     os.makedirs("renders", exist_ok=True)
 
