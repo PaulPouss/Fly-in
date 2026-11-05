@@ -1,5 +1,5 @@
 PYTHON := python3
-ARGS   ?= maps/maps/medium/02_circular_loop.txt
+ARGS   ?= maps/maps/hard/03_ultimate_challenge.txt
  
 .PHONY: install run debug clean lint lint-strict
  
