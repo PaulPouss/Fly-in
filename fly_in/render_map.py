@@ -1,9 +1,12 @@
 import math
 
 import matplotlib.pyplot as plt
+from pathlib import Path
 from matplotlib.axes import Axes
 from matplotlib.colors import is_color_like
 from matplotlib.patches import FancyArrow
+from matplotlib.backend_bases import MouseEvent, KeyEvent
+import matplotlib.image as mpimg
 
 from .classes import BlockedHub, Hub, HubRole, MapInfo, PriorityHub
 from .classes import RestrictedHub
@@ -52,7 +55,7 @@ class RenderMap():
                 dist = math.hypot(a.x - b.x, a.y - b.y)
                 if 0 < dist < min_gap:
                     min_gap = dist
-        return min_gap if min_gap != math.inf else 1.0
+        return (min_gap / 2.5) if min_gap != math.inf else 1.0
 
     def render(self, output_path: str,
                drone_positions: dict[str, int] | None = None,
@@ -255,3 +258,64 @@ class RenderMap():
             bbox_to_anchor=(1.02, 1), fontsize=8,
             title="Zone type (fallback color)",
         )
+
+
+def browse_images(image_dir: str | Path, extension: str = ".png") -> None:
+    image_dir = Path(image_dir)
+
+    # Récupération et tri numérique des images
+    images = sorted(
+        image_dir.glob(f"turn_*{extension}"),
+        key=lambda p: int(p.stem.split("_")[1])
+    )
+
+    if not images:
+        print("Aucune image trouvée.")
+        return
+
+    current_index = 0
+
+    fig, ax = plt.subplots(figsize=(12, 8))
+
+    def show_image() -> None:
+        ax.clear()
+
+        img = mpimg.imread(images[current_index])
+        ax.imshow(img)
+        ax.axis("off")
+
+        ax.set_title(
+            f"{images[current_index].name} "
+            f"({current_index + 1}/{len(images)})",
+            fontsize=14
+        )
+
+        fig.canvas.draw_idle()
+
+    def next_image() -> None:
+        nonlocal current_index
+        current_index = (current_index + 1) % len(images)
+        show_image()
+
+    def previous_image() -> None:
+        nonlocal current_index
+        current_index = (current_index - 1) % len(images)
+        show_image()
+
+    # Navigation à la souris
+    def on_click(event: MouseEvent) -> None:
+        if event.button == 1:
+            next_image()
+
+    # Navigation au clavier
+    def on_key(event: KeyEvent) -> None:
+        if event.key == "right":
+            next_image()
+        elif event.key == "left":
+            previous_image()
+
+    fig.canvas.mpl_connect("button_press_event", on_click)
+    fig.canvas.mpl_connect("key_press_event", on_key)
+
+    show_image()
+    plt.show()

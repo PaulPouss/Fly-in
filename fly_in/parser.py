@@ -5,8 +5,9 @@ from typing import Any
 
 from .errors import ParserError, SimulationError, ValidationError
 from .map_builder import MapBuilder
-from .render_map import RenderMap
+from .render_map import RenderMap, browse_images
 from .simulation_engine import SimulationEngine
+from pathlib import Path
 
 
 class DataProcessor(ABC):
@@ -255,3 +256,6 @@ def parser_monitor() -> None:
         print(" ".join(turn_moves))
     print(f"Total turns: {len(turns)}")
     print(f"Renders saved in ./renders/ ({len(turns)} images)")
+
+    render_dir = Path(__file__).resolve().parent.parent / "renders"
+    browse_images(render_dir, extension=".png")
