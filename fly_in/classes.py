@@ -13,9 +13,6 @@ class HubRole(Enum):
 class Drone():
     def __init__(self, drone_id: int) -> None:
         self.status: str = "waiting"
-        # TODO (not decided): status stays a free str for now.
-        # Could be consistent with HubRole -> a DroneStatus(Enum) would
-        # be safer, never settled with the user.
         self.id: int = drone_id
         self.current_hub: "Hub | None" = None
         self.path: list["Hub"] = []

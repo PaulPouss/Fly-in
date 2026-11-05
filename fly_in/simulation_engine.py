@@ -21,9 +21,6 @@ class SimulationEngine():
         )
         self.drones: list[Drone] = self._create_drones()
         self.turns_log: list[list[str]] = []
-        # Drones currently in forced transit (2 turns) toward a
-        # restricted zone: hub -> destination already reserved, waiting
-        # for automatic arrival next turn.
         self._in_transit: dict[Drone, tuple[Connection, Hub]] = {}
         self._reserved_hub_slots: dict[Hub, int] = {}
         self.turn_number = 0
@@ -36,7 +33,6 @@ class SimulationEngine():
         for hub in self.map_info.hub_list:
             if hub.role == role:
                 return hub
-        # Should never happen: already guaranteed by MapInfo.validate()
         raise SimulationError(f"no hub found with role {role}")
 
     def _build_adjacency(self) -> dict[Hub, list[tuple[Connection, Hub]]]:
@@ -273,6 +269,7 @@ class SimulationEngine():
     def _run_one_turn(self, active: list[Drone]) -> bool:
         turn_moves: list[str] = []
         any_move = False
+        arrived_this_turn: set[Drone] = set()
 
         # 1. Drones already in forced transit arrive automatically.
         for drone in list(self._in_transit.keys()):
@@ -295,6 +292,8 @@ class SimulationEngine():
             drone.go_on_next()
             destination.drones_on_hub += 1
 
+            arrived_this_turn.add(drone)
+
             connection.current_occupation = max(
                 0, connection.current_occupation - 1
             )
@@ -304,7 +303,10 @@ class SimulationEngine():
 
         # Drones that just arrived (status "finished") must no longer
         # be considered for the rest of this turn.
-        still_active = [d for d in active if d.status != "finished"]
+        still_active = [
+                        d for d in active
+                        if d.status != "finished" and d not in arrived_this_turn
+                    ]
 
         # 2. Normal move requests / restricted zone commitments.
         requests: dict[Hub, list[Drone]] = {}
@@ -341,14 +343,6 @@ class SimulationEngine():
         # max_drone allowed. Keeping the source-hub decrement and the
         # destination-hub increment together, only on approval, is
         # what guarantees drones_on_hub can never overflow.
-        #
-        # TODO (trade-off, not discussed with the user): because of
-        # this, a hub cannot accept an incoming drone this same turn
-        # by counting on one of its current occupants leaving this
-        # same turn (VII.3's "moving out frees capacity for that same
-        # turn") unless that occupant's own move happens to be
-        # resolved earlier in this loop. Safety (never exceeding
-        # max_drone) was prioritized over that same-turn optimization.
         for hub, drones in requests.items():
             drones_sorted = sorted(drones, key=lambda d: d.id)
             for drone in drones_sorted:

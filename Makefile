@@ -1,5 +1,5 @@
 PYTHON := python3
-ARGS   ?= maps/hard/03_ultimate_challenge.txt
+ARGS   ?= maps/challenger/01_the_impossible_dream.txt
  
 .PHONY: install run debug clean lint lint-strict
  
