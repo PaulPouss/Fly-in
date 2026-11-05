@@ -118,7 +118,7 @@ class SimulationEngine():
                 current, (float("inf"), float("inf"))
             ):
                 continue
-            for connection, neighbor in self.adjacency[current]:
+            for _, neighbor in self.adjacency[current]:
                 if neighbor in blocked_hubs:
                     continue
 
